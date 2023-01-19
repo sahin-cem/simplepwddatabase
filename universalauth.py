@@ -1,77 +1,94 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import getpass
 import bcrypt
-import os
 import pwdtools
 from pwdtools import bcolors
 
-
-if not os.path.exists("password.txt"):
-    with open("password.txt", "wb"): 
-        pass
-
-
-userpass = pwdtools.linestripsplit("password.txt", ":")
-
-choice = None
-
-
-def main():
-    global choice
-    while type(choice) != int:
-        choice = input(bcolors.OKCYAN + "What would you like to do?\n\n1. Set a new user\n2. Check password\n____________________\n\n Please select either 1 or 2: " + bcolors.ENDC)
-        try:
-            choice = int(choice)
-            break
-        except ValueError:
-            print(bcolors.WARNING + "\nError: Please select either 1 or 2: \n" + bcolors.ENDC)
-            continue
-    return choice
+def msg(startColor, string, endColor=bcolors.ENDC):
+  print(startColor + string + endColor)
 
 
 def success():
-    print(bcolors.OKGREEN + "Success!\n" + bcolors.ENDC)
+    msg(bcolors.OKGREEN, 
+        "\nSuccess!\n")
+    return 0
 
 
+def menue():
+  msg(bcolors.OKCYAN,
+        "What would you like to do?\n\n"
+        "1. Set a new user\n"
+        "2. Check password\n"
+        "3. Exit password safe\n\n "
+        "Please select either 1, 2 or 3: \n")
 
 
-def write_user():
-    while True:
-        username = input(bcolors.OKBLUE + "Please set your username: " + bcolors.ENDC).lower()
-        if username in userpass:
-            print(bcolors.FAIL + "Error: Username already in Database!\n" + bcolors.ENDC)
-            continue
-        else:
-            password = getpass.getpass(bcolors.OKBLUE + "Please set a password: " + bcolors.ENDC).encode("utf-8") #userinput string which isnt shown, encoded to hash the pwd
-            hashed = bcrypt.hashpw(password, bcrypt.gensalt())
-            with open("password.txt", "ab") as fobj: #open a file with write and byte parameters
-                fobj.write("{}:{}\n".format(username, hashed).encode("utf-8")) #write a line into the file and encode it
-                success()
-                break
+def write_user(password_file):
+  username = input(bcolors.OKBLUE + "Please set your username: ").lower()
+  userpass = pwdtools.linestripsplit(password_file, ":")
+
+  if username in userpass:
+    msg(bcolors.FAIL,
+        "ERROR: USERNAME ALREADY IN DATABASE")
+    return 1
+
+  password = getpass.getpass(bcolors.OKBLUE + "Please set a password: ").encode("utf-8")
+  hashed = bcrypt.hashpw(password, bcrypt.gensalt())
+  with open("password.txt", "ab") as fobj:
+    fobj.write(f"{username}:{hashed}\n".encode("utf-8")) 
+    return success()
 
 
-def check_user():
-    while True:
-        username = input(bcolors.OKBLUE + "Enter your username: " + bcolors.ENDC).lower()
-        if username in userpass:
-            password = getpass.getpass(bcolors.OKBLUE + "Please enter your password: " + bcolors.ENDC).encode("utf-8")
-            hashed = userpass[username].encode("utf-8")
-            if bcrypt.checkpw(password, hashed):
-                success()
-                break
-            else:
-                print(bcolors.FAIL + "Wrong password!\n" + bcolors.ENDC)
-                quit()
-        else:
-            print(bcolors.WARNING + "Username not in database, try again." + bcolors.ENDC)
-            continue
+def check_user(password_file):
+  username = input(bcolors.OKBLUE + "Enter your username: " + bcolors.ENDC).lower()
+  userpass = pwdtools.linestripsplit(password_file, ":")
+
+  if not(username in userpass):
+    msg(bcolors.FAIL, 
+        "ERROR: USERNAME NOT IN DATABASE")
+    return 1
+
+  password = getpass.getpass(bcolors.OKBLUE + "Please enter your password: " + bcolors.ENDC).encode("utf-8")
+  hashed = userpass[username].encode("utf-8")
+  if bcrypt.checkpw(password, hashed):
+    return success()
+
+  msg(bcolors.FAIL, 
+    "ERROR: WRONG PASSWORD")
+  return 1
 
 
-main()
+def main():
+  state = 0
 
-if choice == 1:
-    write_user()
+  password_file = "password.txt"
+  pwdtools.check_create_file(password_file)
 
-if choice == 2:
-    check_user()
+  while True:
+    match state:
+      case 0:
+        menue()
+        choice = input( )
+        try:
+            state = int(choice)
+        except ValueError:
+            state = choice
+      case 1:
+        print("Write user: ")
+        write_user(password_file)
+        state = 0
+      case 2:        
+        print("Check user: ")
+        check_user(password_file)
+        state = 0
+      case 3:        
+        print("Goodbye ... ")
+        quit()      
+      case _:
+        print("Invalid choice")
+        state = 0
+
+
+if __name__ == "__main__":
+  main()
